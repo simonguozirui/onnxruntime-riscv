@@ -420,6 +420,9 @@ MLASCALL(char accelerator_mode, bool relu,
                             int8_t* out, int strideOut,
                             int divisor, float real_multiplier,
                             const int32_t* bias, int strideBias, bool repeating_bias);
+
+void HwachaDepthWiseConv
+MLASCALL(int test_number);
 #endif
 
 void
