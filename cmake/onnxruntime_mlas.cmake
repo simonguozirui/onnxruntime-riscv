@@ -123,9 +123,14 @@ else()
   endif()
 
   if(onnxruntime_USE_SYSTOLIC)
+	set_property(SOURCE ${ONNXRUNTIME_ROOT}/core/mlas/lib/hwacha/util_asm.S PROPERTY LANGUAGE C)
     set(mlas_platform_srcs
       ${ONNXRUNTIME_ROOT}/core/mlas/lib/systolic/systolic.cpp
+      
+      ${ONNXRUNTIME_ROOT}/core/mlas/lib/hwacha/util.cpp	
       ${ONNXRUNTIME_ROOT}/core/mlas/lib/hwacha/hwacha.cpp
+      ${ONNXRUNTIME_ROOT}/core/mlas/lib/hwacha/util_asm.S
+	      
       )
   elseif(ARM)
     set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -mfpu=neon")
