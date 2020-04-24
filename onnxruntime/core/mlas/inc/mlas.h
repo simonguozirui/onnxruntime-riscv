@@ -20,6 +20,7 @@ Abstract:
 #include <cstdlib>
 #include <cstdint>
 
+
 //
 // Define the calling convention for Windows targets.
 //
@@ -421,8 +422,10 @@ MLASCALL(char accelerator_mode, bool relu,
                             int divisor, float real_multiplier,
                             const int32_t* bias, int strideBias, bool repeating_bias);
 
-void HwachaDepthWiseConv
-MLASCALL(int test_number);
+void Hwachaim2col
+MLASCALL(size_t batch_size, size_t height, size_t width, size_t channels,
+                size_t I, size_t K,
+                const int8_t* input_arr, const int8_t* output_arr, const struct ConvParams * params);
 #endif
 
 void

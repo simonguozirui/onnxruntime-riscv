@@ -2113,7 +2113,7 @@ public:
         // Test(18, 45, 337, 8, 0, /*relu= */ true);
         // Test(1697, 2029, 1319, 16, 0, /*relu= */ true);
         printf("avi's test\n");
-        HwachaDepthWiseConv(24);
+        //HwachaDepthWiseConv(24);
     }
 
     void ExecuteLong(void) override

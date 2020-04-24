@@ -5,6 +5,26 @@
 
 #define MAX(a, b)  ((a>b)?a:b)
 void hwacha_init();
+
+struct ConvParams {
+    int batch_size;
+    int in_dim, out_dim;
+    int kernel_size;
+    int in_channels;
+    int out_channels;
+    int stride;
+    int padding;
+    bool bias;
+    bool depthwise;
+    int n_patches;
+    int patch_size;
+    int output_scale;
+    int res_scale;
+    int pool_size, pool_stride, pool_padding, out_dim_pooled;
+
+    int I, J, K;
+};
+
 // int rdcycle();
 // int rdinstret();
 // void* safe_malloc(int size);
