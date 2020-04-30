@@ -8,7 +8,7 @@ DIR="$( cd "$( dirname "${BASH_SOURCE[0]}" )" && pwd )"
 # Setup RISCV environment variables. Ensure that riscv/esp-tools GCC is in your path.
 export CXX=riscv64-unknown-linux-gnu-g++
 export CC=riscv64-unknown-linux-gnu-gcc
-export CXXFLAGS="-march=rv64gcxhacha -mabi=lp64d"
+export CXXFLAGS="-march=rv64gcxhwacha -mabi=lp64d"
 export CFLAGS="-march=rv64gcxhwacha -mabi=lp64d"
 
 # Download protoc if we don't have it

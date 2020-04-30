@@ -22,8 +22,16 @@
 
 void hwacha_init() {
   asm volatile ("lw t0, vsetvlen" : : : "t0");
+  //asm volatile ("lw t0, vtest_avi" : : : "t0");
 
 }
+
+// void setvcfg(int nd, int nw, int nh, int np) {
+//     int cfg = VCFG(nd, nw, nh, np);
+//     asm volatile ("vsetcfg %0"
+//                   :
+//                   : "r" (cfg));
+// }
 
 
 // int __attribute__((optimize("O0"))) rdcycle() {
@@ -109,23 +117,23 @@ void hwacha_init() {
 //     }
 // }
 //
-// void setvcfg(int nd, int nw, int nh, int np) {
-//     int cfg = VCFG(nd, nw, nh, np);
-//     asm volatile ("vsetcfg %0"
-//                   :
-//                   : "r" (cfg));
-// }
-//
-// int setvlen(int vlen) {
-//     int consumed;
-//     asm volatile ("vsetvl %0, %1"
-//                   : "=r" (consumed)
-//                   : "r" (vlen));
-//     asm volatile ("la t0, vsetvlen" : : : "t0");
-//     asm volatile ("vf 0(t0)");
-//     asm volatile ("fence");
-//     return consumed;
-// }
+void setvcfg(int nd, int nw, int nh, int np) {
+    int cfg = VCFG(nd, nw, nh, np);
+    asm volatile ("vsetcfg %0"
+                  :
+                  : "r" (cfg));
+}
+
+int setvlen(int vlen) {
+    int consumed;
+    asm volatile ("vsetvl %0, %1"
+                  : "=r" (consumed)
+                  : "r" (vlen));
+    asm volatile ("la t0, vsetvlen" : : : "t0");
+    asm volatile ("vf 0(t0)");
+    asm volatile ("fence");
+    return consumed;
+}
 //
 // void memcpy_16(int16_t* src, int16_t* dest, int len)
 // {

@@ -3,27 +3,20 @@
 
 #include <stdint.h>
 
+
+
+
 #define MAX(a, b)  ((a>b)?a:b)
 void hwacha_init();
+void setvcfg(int nd, int nw, int nh, int np);
+int setvlen(int vlen);
 
-struct ConvParams {
-    int batch_size;
-    int in_dim, out_dim;
-    int kernel_size;
-    int in_channels;
-    int out_channels;
-    int stride;
-    int padding;
-    bool bias;
-    bool depthwise;
-    int n_patches;
-    int patch_size;
-    int output_scale;
-    int res_scale;
-    int pool_size, pool_stride, pool_padding, out_dim_pooled;
+#define ROUNDING_RIGHT_SHIFT(x, shift)                      \
+  ({ ((x) >> (shift)) +                                     \
+         (((shift) == 0 ? 0 : (((x) >> ((shift)-1)) & 1)) & \
+          ((((shift) <= 1 ? 0 : ((x) & ((1 << ((shift)-1)) - 1))) != 0) | (((x) >> (shift)) & 1))); })
 
-    int I, J, K;
-};
+
 
 // int rdcycle();
 // int rdinstret();
@@ -34,7 +27,7 @@ struct ConvParams {
 // void fill_seq_32(float* p, int n, int mode);
 // void fill_seq_16(int16_t* p, int n, int mode);
 // void setvcfg(int nd, int nw, int nh, int np);
-// int setvlen(int vlen);
+
 //
 // void memcpy_16(int16_t* src, int16_t* dest, int len);
 // void memcpy_32(float* src, float* dest, int len);
