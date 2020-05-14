@@ -45,8 +45,9 @@ void HwachaDepthWiseConv(const size_t batch_size,
   setvcfg(0, 1, 1, 1);
   int a = 10;
   
-  int consumed = setvlen(5);
-  printf("Consumed: %li\n", consumed);
+  int consumed = setvlen(channels);
+
+  printf("\nConsumed: %li\n", consumed);
   printf("Size: %li\n", sizeof(input[0]));
   //vfadd.w vv0,vv0,vs2
 
@@ -94,7 +95,7 @@ void HwachaDepthWiseConv(const size_t batch_size,
   
 
 
-  printf("Finished Hwacha Im2Col! \n");
+  printf("Finished Hwacha Depthwise Convolution! \n");
 
 
 
