@@ -31,9 +31,9 @@ void HwachaDepthWiseConv(const size_t batch_size,
 
   printf("\n");
   printf("input\n");
-  for (size_t m = 0; m < in_height * channels; m++) {
+  for (size_t m = 0; m < in_height; m++) {
     for (size_t k = 0; k < in_width * channels; k++) {
-        printf("%i ", input[m * in_width + k]);
+        printf("%i ", input[m * channels * in_width + k]);
     }
     printf("\n");
   }
@@ -42,9 +42,9 @@ void HwachaDepthWiseConv(const size_t batch_size,
   printf("input\n");
   for(size_t c = 0; c < channels; c++){
     printf("Channel %i\n",c);
-    for (size_t y = c; y < in_height * channels; y+=channels) {
+    for (size_t y = 0; y < in_height; y+=1) {
       for (size_t x = c; x < in_width * channels; x+=channels) {
-          printf("%i ", input[x + in_width * y]);
+          printf("%i ", input[x + in_width * channels * y]);
       }
       printf("\n");
     }
@@ -61,42 +61,61 @@ void HwachaDepthWiseConv(const size_t batch_size,
   //hwacha_init();
   
   //asm volatile ("vf 0(t0)");
-  setvcfg(3, 3, 3, 1);
   
-  int consumed = setvlen(channels);
 
-  printf("\nConsumed: %li\n", consumed);
+
+  //printf("\nConsumed: %li\n", consumed);
   //printf("Size: %li\n", sizeof(input[0]));
   //vfadd.w vv0,vv0,vs2
 
 
+setvcfg(3, 3, 3, 1);
+int consumed = setvlen(channels);
+printf("\nConsumed: %li\n", consumed);
+
 int input_idx = 0;
 int input_idy = 0;
 
-int8_t* input_ptr; 
+int8_t* input_ptr;
+int8_t* temp_output =  (int8_t*) malloc(channels*out_width*out_height*sizeof(int8_t)); //BufferOutput.GetBuffer(OutputElements);
 
 for(int output_idy=0; output_idy<out_height; output_idy+=1){
- for(int output_idx=0; output_idx<out_width; output_idx+=1){
+  for(int output_idx=0; output_idx<out_width*channels; output_idx+=channels){
   
-    asm volatile ("vmca va0, %0" : : "r" (output + output_idx + output_idy*out_width)); //input
-    input_ptr = (int8_t*) input + output_idx + in_width  * output_idy;
+    asm volatile ("vmca va0, %0" : : "r" (temp_output + output_idx + output_idy*out_width*channels)); //input
+    input_ptr = (int8_t*) input + output_idx + output_idy * in_width*channels; 
     input_idy = 0;
     for(int filter_idy=0; filter_idy<kernel_height; filter_idy++){
       input_idx = 0;
-      for(int filter_idx=0; filter_idx<kernel_width; filter_idx++){
-        printf("Filter_IDX: %i; Filter_IDY:  %i; Input_IDX: %i;  Input_IDY: %i; \n", filter_idx, filter_idy, input_idx, input_idy);
-        asm volatile ("vmca va1, %0" : : "r" (input_ptr + input_idx + in_width  * input_idy)); 
-        asm volatile ("vmca va2, %0" : : "r" (filter + filter_idx + filter_idy*kernel_width)); 
+      for(int filter_idx=0; filter_idx<kernel_width*channels; filter_idx+=channels){
+        //printf("Filter_IDX: %i; Filter_IDY:  %i; Input_IDX: %i;  Input_IDY: %i; \n", filter_idx, filter_idy, input_idx, input_idy);
+        asm volatile ("vmca va1, %0" : : "r" (input_ptr + input_idx + input_idy*in_width*channels)); 
+        asm volatile ("vmca va2, %0" : : "r" (filter + filter_idx + filter_idy*kernel_width*channels)); 
+        //asm volatile ("vmcs vs0, %0" : : "r" (channels)); 
         asm volatile ("la t0, vtest2" : : : "t0");
         asm volatile ("lw t1, 0(t0)");
         asm volatile ("vf 0(t0)");
-        input_idx += 1;
+        input_idx += channels;
       }
       input_idy += 1;
     }
- }
+  }
 }
 asm volatile ("fence");
+
+//for loop for as many channels 
+consumed = setvlen(out_width*out_height);
+printf("\nConsumed: %li\n", consumed);
+asm volatile ("vmca va0, %0" : : "r" (temp_output)); 
+asm volatile ("vmca va1, %0" : : "r" (temp_output+1)); 
+asm volatile ("vmca va2, %0" : : "r" (output)); 
+asm volatile ("vmca va3, %0" : : "r" (channels)); 
+asm volatile ("la t0, accumulate_channels" : : : "t0");
+asm volatile ("lw t1, 0(t0)");
+asm volatile ("vf 0(t0)");
+
+
+
    
     // asm volatile ("vmca va3, %0" : : "r" (input+in_width+1)); //bottom right pixel
     //asm volatile ("vmca va1, %0" : : "r" (output));  //output
@@ -131,6 +150,15 @@ asm volatile ("fence");
   
 
   printf("\n");
+  printf("temp_output\n");
+  for (size_t m = 0; m < out_height; m++) {
+    for (size_t k = 0; k < out_width*channels; k++) {
+        printf("%i ", temp_output[m * channels * out_width + k]);
+    }
+    printf("\n");
+  }
+
+  printf("\n");
   printf("output\n");
   for (size_t m = 0; m < out_height; m++) {
     for (size_t k = 0; k < out_width; k++) {
@@ -139,14 +167,27 @@ asm volatile ("fence");
     printf("\n");
   }
 
-  printf("\n");
-  printf("input\n");
-  for (size_t m = 0; m < in_height; m++) {
-    for (size_t k = 0; k < in_width; k++) {
-        printf("%i ", input[m * in_width + k]);
-    }
-    printf("\n");
-  }
+  // printf("\n");
+  // printf("output\n");
+  // for(size_t c = 0; c < channels; c++){
+  //   printf("Channel %i\n",c);
+  //   for (size_t y = c; y < out_height * channels; y+=channels) {
+  //     for (size_t x = c; x < out_width * channels; x+=channels) {
+  //         printf("%i ", output[x + out_width * y]);
+  //     }
+  //     printf("\n");
+  //   }
+  //   printf("\n");
+  // }
+
+  // printf("\n");
+  // printf("input\n");
+  // for (size_t m = 0; m < in_height; m++) {
+  //   for (size_t k = 0; k < in_width; k++) {
+  //       printf("%i ", input[m * in_width + k]);
+  //   }
+  //   printf("\n");
+  // }
 
   // //printf("acc_t: %i\n", bias);
 

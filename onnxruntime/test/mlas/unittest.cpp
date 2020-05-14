@@ -2079,7 +2079,7 @@ public:
     }
 };
 
-//#ifdef USE_SYSTOLIC //TODO:
+#ifdef USE_SYSTOLIC //TODO:
 
 #define ROUNDING_RIGHT_SHIFT(x, shift) \
     ({((x) >> (shift)) + \
@@ -2176,30 +2176,46 @@ class MlasHwachaDWCTest : public MlasTestBase
                         OutputReference);
         printf("\n");
         printf("input\n");
-        for (size_t m = 0; m < InputHeight; m++) {
-          for (size_t k = 0; k < InputWidth; k++) {
-              printf("%i ", Input[m * InputWidth + k]);
-          }
-          printf("\n");
+        for(size_t c = 0; c < InputChannels; c++){
+            printf("Channel %i\n",c);
+            for (size_t y = c; y < InputHeight * InputChannels; y+=InputChannels) {
+            for (size_t x = c; x < InputWidth * InputChannels; x+=InputChannels) {
+                printf("%i ", Input[x + InputWidth * y]);
+            }
+            printf("\n");
+            }
+            printf("\n");
         }
 
         printf("\n");
 
         printf("filter\n");
+        for (size_t k = 0; k < KernelHeight; k+=1) {
+            for (size_t l = 0; l < KernelWidth*InputChannels; l+=1) {
+                printf("%i ", Filter[k * InputChannels * KernelWidth + l]);
+            }
+            printf("\n");
+        }
+            
+    
+        
+        printf("\n");
+        printf("filter\n");
         for (size_t m = 0; m < FilterCount; m++) {
-          
-          for (size_t k = 0; k < KernelHeight; k++) {
-              for (size_t l = 0; l < KernelWidth; l++) {
-                printf("%i ", Filter[m * KernelSize + k * KernelWidth + l]);
+          for (size_t c = 0; c < InputChannels; c++){
+            for (size_t k = 0; k < KernelHeight; k+=1) {
+                for (size_t l = c; l < KernelWidth*InputChannels; l+=InputChannels) {
+                    printf("%i ", Filter[k * InputChannels * KernelWidth + l]);
+                }
+                printf("\n");
             }
             printf("\n");
           }
-          printf("\n");
         }
 
         printf("\n");
         printf("Reference Output:\n");
-        for (size_t m = 0; m < OutputHeight * channels; m++) {
+        for (size_t m = 0; m < OutputHeight; m++) {
           for (size_t k = 0; k < OutputWidth; k++) {
               printf("%i ", OutputReference[m * OutputWidth + k]);
           }
