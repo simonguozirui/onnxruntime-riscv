@@ -2079,7 +2079,7 @@ public:
     }
 };
 
-#ifdef USE_SYSTOLIC //TODO:
+//#ifdef USE_SYSTOLIC //TODO:
 
 #define ROUNDING_RIGHT_SHIFT(x, shift) \
     ({((x) >> (shift)) + \
@@ -2187,6 +2187,7 @@ class MlasHwachaDWCTest : public MlasTestBase
 
         printf("filter\n");
         for (size_t m = 0; m < FilterCount; m++) {
+          
           for (size_t k = 0; k < KernelHeight; k++) {
               for (size_t l = 0; l < KernelWidth; l++) {
                 printf("%i ", Filter[m * KernelSize + k * KernelWidth + l]);
@@ -2198,7 +2199,7 @@ class MlasHwachaDWCTest : public MlasTestBase
 
         printf("\n");
         printf("Reference Output:\n");
-        for (size_t m = 0; m < OutputHeight; m++) {
+        for (size_t m = 0; m < OutputHeight * channels; m++) {
           for (size_t k = 0; k < OutputWidth; k++) {
               printf("%i ", OutputReference[m * OutputWidth + k]);
           }
@@ -2388,7 +2389,7 @@ public:
 
         // Depthwise convolutions.
         printf("Avi's Depthwise Tests\n");
-        Test(1, 1, 1, 5, 5, 1, 2, 2, 0, 0, 0, 0, 1, 1, 1, 1);
+        Test(1, 1, 2, 5, 5, 1, 2, 2, 0, 0, 0, 0, 1, 1, 1, 1);
         //for (unsigned i = 16; i < 256; i <<= 1) {
             
             //Test(1, i, 1, 28, 28, 1, 3, 3, 0, 0, 0, 0, 1, 1, 1, 1);

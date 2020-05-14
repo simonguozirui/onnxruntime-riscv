@@ -28,42 +28,105 @@ void HwachaDepthWiseConv(const size_t batch_size,
   printf("Group Count: %li\n", group_count);
   printf("Channels: %li\n", channels);
   printf("Filter Count: %li\n", filter_count);
-    
 
   printf("\n");
   printf("input\n");
-  for (size_t m = 0; m < in_height; m++) {
-    for (size_t k = 0; k < in_width; k++) {
+  for (size_t m = 0; m < in_height * channels; m++) {
+    for (size_t k = 0; k < in_width * channels; k++) {
         printf("%i ", input[m * in_width + k]);
     }
     printf("\n");
   }
 
+  printf("\n");
+  printf("input\n");
+  for(size_t c = 0; c < channels; c++){
+    printf("Channel %i\n",c);
+    for (size_t y = c; y < in_height * channels; y+=channels) {
+      for (size_t x = c; x < in_width * channels; x+=channels) {
+          printf("%i ", input[x + in_width * y]);
+      }
+      printf("\n");
+    }
+    printf("\n");
+  }
+
+
+  for (size_t m = 0; m < out_height; m++) {
+    for (size_t k = 0; k < out_width; k++) {
+      output[m * out_width + k] = (int8_t) 0;
+    }
+  }
+
   //hwacha_init();
   
   //asm volatile ("vf 0(t0)");
-  setvcfg(0, 1, 1, 1);
-  int a = 10;
+  setvcfg(3, 3, 3, 1);
   
   int consumed = setvlen(channels);
 
   printf("\nConsumed: %li\n", consumed);
-  printf("Size: %li\n", sizeof(input[0]));
+  //printf("Size: %li\n", sizeof(input[0]));
   //vfadd.w vv0,vv0,vs2
 
-  
-  asm volatile ("vmca va0, %0" : : "r" (input));
-  asm volatile ("vmca va1, %0" : : "r" (output));
-  asm volatile ("la t0, vtest_avi" : : : "t0");
-  asm volatile ("lw t1, 0(t0)");
-  asm volatile ("vf 0(t0)");
-  asm volatile ("fence");
 
-  asm volatile ("la t0, vtest2" : : : "t0");
-  asm volatile ("lw t1, 0(t0)");
-  //asm volatile ("vmcs vs2, %0" : : "r" (input[2]));
-  asm volatile ("vf 0(t0)");
-  asm volatile ("fence");
+int input_idx = 0;
+int input_idy = 0;
+
+int8_t* input_ptr; 
+
+for(int output_idy=0; output_idy<out_height; output_idy+=1){
+ for(int output_idx=0; output_idx<out_width; output_idx+=1){
+  
+    asm volatile ("vmca va0, %0" : : "r" (output + output_idx + output_idy*out_width)); //input
+    input_ptr = (int8_t*) input + output_idx + in_width  * output_idy;
+    input_idy = 0;
+    for(int filter_idy=0; filter_idy<kernel_height; filter_idy++){
+      input_idx = 0;
+      for(int filter_idx=0; filter_idx<kernel_width; filter_idx++){
+        printf("Filter_IDX: %i; Filter_IDY:  %i; Input_IDX: %i;  Input_IDY: %i; \n", filter_idx, filter_idy, input_idx, input_idy);
+        asm volatile ("vmca va1, %0" : : "r" (input_ptr + input_idx + in_width  * input_idy)); 
+        asm volatile ("vmca va2, %0" : : "r" (filter + filter_idx + filter_idy*kernel_width)); 
+        asm volatile ("la t0, vtest2" : : : "t0");
+        asm volatile ("lw t1, 0(t0)");
+        asm volatile ("vf 0(t0)");
+        input_idx += 1;
+      }
+      input_idy += 1;
+    }
+ }
+}
+asm volatile ("fence");
+   
+    // asm volatile ("vmca va3, %0" : : "r" (input+in_width+1)); //bottom right pixel
+    //asm volatile ("vmca va1, %0" : : "r" (output));  //output
+    // asm volatile ("vmca va4, %0" : : "r" (filter));  //filter
+    // asm volatile ("vmca va5, %0" : : "r" (filter+1));  //filter
+    // asm volatile ("vmca va6, %0" : : "r" (filter+kernel_width));  //filter
+    // asm volatile ("vmca va7, %0" : : "r" (filter+kernel_width+1));  //filter
+
+    // asm volatile ("vmca va8, %0" : : "r" (output));  //output
+
+    // asm volatile ("la t0, vtest2" : : : "t0");
+    // asm volatile ("lw t1, 0(t0)");
+   
+    // asm volatile ("vf 0(t0)");
+    // asm volatile ("fence");
+    // vlb vv2, va2 #input_image
+    // vlb vv3, va3 #input_image
+    // vlb vv4, va4 #filter
+    // vlb vv5, va5 #filter
+    // vlb vv6, va6 #filter
+    // vlb vv7, va7 #filter
+    // #vmul vv0, vv0, vv4
+    // #vmul vv1, vv1, vv5
+    // #vmul vv2, vv2, vv6
+    // #vmul vv3, vv3, vv7
+    // vadd vv0, vv0, vv2
+    // vadd vv1, vv1, vv3
+    // vadd vv0, vv0, vv1
+    // vsb vv0, va8
+
 
   
 
@@ -72,6 +135,15 @@ void HwachaDepthWiseConv(const size_t batch_size,
   for (size_t m = 0; m < out_height; m++) {
     for (size_t k = 0; k < out_width; k++) {
         printf("%i ", output[m * out_width + k]);
+    }
+    printf("\n");
+  }
+
+  printf("\n");
+  printf("input\n");
+  for (size_t m = 0; m < in_height; m++) {
+    for (size_t k = 0; k < in_width; k++) {
+        printf("%i ", input[m * in_width + k]);
     }
     printf("\n");
   }
@@ -95,7 +167,7 @@ void HwachaDepthWiseConv(const size_t batch_size,
   
 
 
-  printf("Finished Hwacha Depthwise Convolution! \n");
+  printf("\nFinished Hwacha Depthwise Convolution! \n");
 
 
 

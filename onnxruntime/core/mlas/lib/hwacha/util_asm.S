@@ -13,10 +13,12 @@ vsetvlen:
     .globl vtest2
 vtest2:
     vpset vp0
-    vlb vv0, va0
-    vadd vv0, vv0, vv0
-    vsb vv0, va1
-
+    vlb vv0, va1
+    vlb vv1, va2 
+    vlb vv2, va0
+    vmul vv0, vv0, vv1
+    vadd vv0, vv0, vv2
+    vsb vv0, va0
     vstop
 
 
