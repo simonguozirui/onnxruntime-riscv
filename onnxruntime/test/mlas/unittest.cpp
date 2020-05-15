@@ -128,7 +128,7 @@ public:
         T* buffer = GuardAddress - Elements;
 
         const int MinimumFillValue = 0;
-        const int MaximumFillValue = 4;
+        const int MaximumFillValue = 3;
 
         int FillValue = MinimumFillValue;
         T* FillAddress = buffer;
@@ -2132,7 +2132,7 @@ class MlasHwachaDWCTest : public MlasTestBase
         
 
         size_t InputElements = BatchCount * GroupCount * InputChannels * InputSize;
-        size_t FilterElements = GroupCount * FilterCount * InputChannels * KernelSize;
+        size_t FilterElements = GroupCount * FilterCount * KernelSize; // Depthwise InputChannels * KernelSize;
         size_t BiasElements = GroupCount * FilterCount;
         size_t OutputElements = BatchCount * GroupCount * FilterCount * OutputSize;
         
@@ -2178,20 +2178,19 @@ class MlasHwachaDWCTest : public MlasTestBase
         printf("input\n");
         for(size_t c = 0; c < InputChannels; c++){
             printf("Channel %i\n",c);
-            for (size_t y = c; y < InputHeight * InputChannels; y+=InputChannels) {
+            for (size_t y = 0; y < InputHeight; y+=1) {
             for (size_t x = c; x < InputWidth * InputChannels; x+=InputChannels) {
-                printf("%i ", Input[x + InputWidth * y]);
+                printf("%i ", Input[x + InputWidth * InputChannels * y]);
             }
             printf("\n");
             }
             printf("\n");
         }
-
         printf("\n");
 
         printf("filter\n");
         for (size_t k = 0; k < KernelHeight; k+=1) {
-            for (size_t l = 0; l < KernelWidth*InputChannels; l+=1) {
+            for (size_t l = 0; l < KernelWidth*FilterCount; l+=1) {
                 printf("%i ", Filter[k * InputChannels * KernelWidth + l]);
             }
             printf("\n");
@@ -2200,33 +2199,71 @@ class MlasHwachaDWCTest : public MlasTestBase
     
         
         printf("\n");
-        printf("filter\n");
-        for (size_t m = 0; m < FilterCount; m++) {
-          for (size_t c = 0; c < InputChannels; c++){
+        printf("Filters:\n");
+    
+          for (size_t f = 0; f < FilterCount;f++){
+            printf("filter %i\n", f);
             for (size_t k = 0; k < KernelHeight; k+=1) {
-                for (size_t l = c; l < KernelWidth*InputChannels; l+=InputChannels) {
-                    printf("%i ", Filter[k * InputChannels * KernelWidth + l]);
+                for (size_t l = f; l < KernelWidth*FilterCount; l+=FilterCount) {
+                    printf("%i ", Filter[k * FilterCount * KernelWidth + l]);
                 }
                 printf("\n");
             }
             printf("\n");
           }
-        }
+        
 
         printf("\n");
         printf("Reference Output:\n");
-        for (size_t m = 0; m < OutputHeight; m++) {
-          for (size_t k = 0; k < OutputWidth; k++) {
-              printf("%i ", OutputReference[m * OutputWidth + k]);
-          }
-          printf("\n");
+        //printf("output\n");
+        for (size_t k = 0; k < OutputHeight; k+=1) {
+            for (size_t l = 0; l < OutputWidth*FilterCount; l+=1) {
+                printf("%p:%02x \t",  &OutputReference[k * FilterCount * OutputWidth + l], OutputReference[k * OutputWidth + l]);
+            }
+            printf("\n");
         }
-        printf("\n");printf("\n");printf("\n");
+        printf("\n");
 
-        if (memcmp(Output, OutputReference, OutputElements * sizeof(float)) == 1) {
+        printf("Actual Output:\n");
+        //printf("output\n");
+        for (size_t k = 0; k < OutputHeight; k+=1) {
+            for (size_t l = 0; l < OutputWidth*FilterCount; l+=1) {
+                printf("%p:%02x \t", &Output[k * FilterCount * OutputWidth + l], Output[k * OutputWidth + l]);
+            }
+            printf("\n");
+        }
+        printf("\n");
+        
+
+        for(size_t c = 0; c < InputChannels; c++){
+            printf("Channel %i\n",c);
+            for (size_t y = 0; y < OutputHeight; y+=1) {
+                for (size_t x = c; x < OutputWidth * InputChannels; x+=InputChannels) {
+                    printf("%i ", OutputReference[x + OutputWidth * InputChannels * y]);
+                }
+            printf("\n");
+            }
+            printf("\n");
+        }
+        printf("\n");
+        // printf("\n");
+        // printf("Reference Output:\n");
+        // for (size_t m = 0; m < OutputHeight; m++) {
+        //   for (size_t k = 0; k < OutputWidth; k++) {
+        //       printf("%i ", OutputReference[m * OutputWidth + k]);
+        //   }
+        //   printf("\n");
+        // }
+        // printf("\n");printf("\n");printf("\n");
+    
+        //printf("sizeof(int8_t)*OutputElements %i\n");
+        if (memcmp(Output, OutputReference, sizeof(int8_t) * OutputElements) != 0) {
             printf("mismatch: batch=%zd,group=%zd,input(%zd,%zd,%zd),filter=%zd,kernel(%zd,%zd)!!!\n",
                 BatchCount, GroupCount, InputChannels, InputHeight, InputWidth, FilterCount,
                 KernelHeight, KernelWidth);
+        }
+        else{
+            printf("Output Matches!\n");
         }
     }
 
@@ -2333,23 +2370,24 @@ class MlasHwachaDWCTest : public MlasTestBase
             for(size_t group = 0; group < GroupCount; group++){
                 for (size_t channel = 0; channel < InputChannels; channel++) {
                     for (size_t out_row = 0; out_row < OutputHeight; out_row++) {
-                        for (size_t out_col = 0; out_col < OutputWidth; out_col++) {
+                        for (size_t out_col = channel; out_col < OutputWidth*InputChannels; out_col+=InputChannels) {
                             size_t in_row = out_row * StrideHeight - PaddingLeftHeight;
 
                             int32_t result = 0;
                             //if (params->bias) {
-                                result = Bias[group];
+                            //result = Bias[group];
                             //}
 
                             for (size_t kernel_row = 0; kernel_row < KernelHeight; kernel_row++) {
                                 size_t in_col = out_col * StrideWidth - PaddingLeftWidth;
 
-                                for (size_t kernel_col = 0; kernel_col < KernelWidth; kernel_col++) {
-                                    if (in_row >= 0 && in_row < InputHeight && in_col >= 0 && in_col < InputWidth) {
-                                        result += Input[group*GroupSize + in_row*InputWidth + in_col] * Filter[group*GroupSize + kernel_row*KernelWidth + kernel_col];
+                                for (size_t kernel_col = channel; kernel_col < KernelWidth*FilterCount; kernel_col+=FilterCount) {
+                                    if (in_row >= 0 && in_row < InputHeight && in_col >= 0 && in_col < InputWidth*InputChannels) {
+                                        result += Input[group*GroupSize + in_row*InputWidth*InputChannels + in_col] * Filter[group*GroupSize + kernel_row*KernelWidth*FilterCount + kernel_col];
                                     }
+                                    //printf("Filter_IDX: %i; Filter_IDY:  %i; Input_IDX: %i;  Input_IDY: %i; Input Value: %i; Filter Value: %i; Result: %i; \n", kernel_col, kernel_row, in_col, in_row, Input[group*GroupSize + in_row*InputWidth*InputChannels + in_col], Filter[group*GroupSize + kernel_row*KernelWidth*FilterCount + kernel_col], result);
 
-                                    in_col++;
+                                    in_col+=InputChannels;
                                 }
 
                                 in_row++;
@@ -2373,8 +2411,9 @@ class MlasHwachaDWCTest : public MlasTestBase
                             if (result > 127) {
                                 result = 127;
                             }                    
-
-                            Output[group*GroupSize + out_row*OutputWidth + out_col] = result;
+                            //printf("Output_IDX: %i; Output_IDY: %i; Result Value: %i\n", out_col, out_row, result);
+                            Output[group*GroupSize + out_row*OutputWidth*InputChannels + out_col] = result;
+                            //printf("\n");
                         }
                     }
                 }
@@ -2405,7 +2444,10 @@ public:
 
         // Depthwise convolutions.
         printf("Avi's Depthwise Tests\n");
-        Test(1, 1, 2, 5, 5, 1, 2, 2, 0, 0, 0, 0, 1, 1, 1, 1);
+        Test(1, 1, 1, 5, 5, 1, 2, 2, 0, 0, 0, 0, 1, 1, 1, 1); //Input Channels 2; Filter Count 2;
+        Test(1, 1, 2, 5, 5, 2, 2, 2, 0, 0, 0, 0, 1, 1, 1, 1); //Input Channels 2; Filter Count 2;
+        Test(1, 1, 3, 5, 5, 3, 2, 2, 0, 0, 0, 0, 1, 1, 1, 1); //Input Channels 2; Filter Count 2;
+
         //for (unsigned i = 16; i < 256; i <<= 1) {
             
             //Test(1, i, 1, 28, 28, 1, 3, 3, 0, 0, 0, 0, 1, 1, 1, 1);
