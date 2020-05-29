@@ -108,6 +108,7 @@ public:
 #else
             if (mprotect(_BaseBuffer, BytesToAllocate, PROT_READ | PROT_WRITE) != 0) {
                 printf("Failed to protect guard region. Retrying without guard enabled.\n");
+                munmap(_BaseBuffer, _BaseBufferSize);
                 _BaseBuffer = mmap(0, _BaseBufferSize, PROT_READ | PROT_WRITE, MAP_PRIVATE | MAP_ANONYMOUS, -1, 0);
                 if (_BaseBuffer == nullptr) {
                     printf("Failed to allocate base buffer memory.\n");
@@ -518,7 +519,7 @@ private:
 
         for (size_t f = 0; f < M * N; f++) {
             if (C[f] != CReference[f]) {
-                printf("mismatch M=%zd, N=%zd, K=%zd, offa=%d, offb=%d!\n", M, N, K, offa, offb);
+                printf("mismatch M=%zd, N=%zd, K=%zd, offa=%d, offb=%d!\n", M, N, K, (int)offa, (int)offb);
             }
         }
     }
@@ -1946,13 +1947,13 @@ public:
                 Buffer[i].u = TestData[i][0].u;
             }
 
-            MlasActivation(&Activation, &Buffer[0].f, nullptr, _countof(Buffer), 1, 1);
+            MlasActivation(&Activation, &Buffer[0].f, nullptr, 1, _countof(Buffer), _countof(Buffer));
 
             for (unsigned i = 0; i < _countof(TestData); i++) {
                 // Sensitive to comparing positive/negative zero and NaNs.
                 if (!AlmostEquals(Buffer[i].f, TestData[i][kind].f)) {
-                  printf("mismatch in vectorized activation kind=%d i=%d input=%f (%08x) expected=%f (%08x) got=%f (%08x)\n", kind, i,
-                         TestData[i][0].f, TestData[i][0].u, TestData[i][kind].f, TestData[i][kind].u, Buffer[i].f, Buffer[i].u);
+                    printf("mismatch in vectorized activation kind=%d i=%d input=%f (%08x) expected=%f (%08x) got=%f (%08x)\n", kind, i,
+                            TestData[i][0].f, TestData[i][0].u, TestData[i][kind].f, TestData[i][kind].u, Buffer[i].f, Buffer[i].u);
                 }
             }
 
@@ -1967,10 +1968,9 @@ public:
 
             for (unsigned i = 0; i < _countof(TestData); i++) {
                 // Sensitive to comparing positive/negative zero and NaNs.
-
                 if (!AlmostEquals(Buffer[i].f, TestData[i][kind].f)) {
-                  printf("mismatch in scalar activation kind=%d i=%d input=%f (%08x) expected=%f (%08x) got=%f (%08x)\n", kind, i,
-                         TestData[i][0].f, TestData[i][0].u, TestData[i][kind].f, TestData[i][kind].u, Buffer[i].f, Buffer[i].u);
+                    printf("mismatch in scalar activation kind=%d i=%d input=%f (%08x) expected=%f (%08x) got=%f (%08x)\n", kind, i,
+                            TestData[i][0].f, TestData[i][0].u, TestData[i][kind].f, TestData[i][kind].u, Buffer[i].f, Buffer[i].u);
                 }
             }
         }
@@ -2637,7 +2637,7 @@ private:
                 printf("B matrix:\n");
                 for (size_t k = 0; k < K; k++) {
                     for (size_t n = 0; n < N; n++) {
-                        printf("%d ", A[k * N + n]);
+                        printf("%d ", B[k * N + n]);
                     }
                     printf("\n");
                 }

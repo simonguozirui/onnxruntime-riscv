@@ -3,6 +3,9 @@
 
 set(TEST_SRC_DIR ${ONNXRUNTIME_ROOT}/test)
 set(TEST_INC_DIR ${ONNXRUNTIME_ROOT})
+if (onnxruntime_ENABLE_TRAINING)
+  list(APPEND TEST_INC_DIR ${ORTTRAINING_ROOT})
+endif()
 if (onnxruntime_USE_TVM)
   list(APPEND TEST_INC_DIR ${TVM_INCLUDES})
 endif()
@@ -24,11 +27,16 @@ function(AddTest)
   endif(_UT_DEPENDS)
 
   add_executable(${_UT_TARGET} ${_UT_SOURCES})
+
+  source_group(TREE ${REPO_ROOT} FILES ${_UT_SOURCES})
+
   if (MSVC AND NOT CMAKE_SIZEOF_VOID_P EQUAL 8)
     #TODO: fix the warnings, they are dangerous
     target_compile_options(${_UT_TARGET} PRIVATE "/wd4244")
   endif()
-  source_group(TREE ${TEST_SRC_DIR} FILES ${_UT_SOURCES})
+  if (MSVC)
+    target_compile_options(${_UT_TARGET} PRIVATE "/wd6330")
+  endif()
   set_target_properties(${_UT_TARGET} PROPERTIES FOLDER "ONNXRuntimeTest")
 
   if (_UT_DEPENDS)
@@ -41,7 +49,7 @@ function(AddTest)
   else()
     target_link_libraries(${_UT_TARGET} PRIVATE ${_UT_LIBS} GTest::gtest GTest::gmock ${onnxruntime_EXTERNAL_LIBRARIES})
   endif()
-  onnxruntime_add_include_to_target(${_UT_TARGET} date_interface safeint_interface)
+  onnxruntime_add_include_to_target(${_UT_TARGET} date_interface)
   target_include_directories(${_UT_TARGET} PRIVATE ${TEST_INC_DIR})
   if (onnxruntime_USE_CUDA)
     target_include_directories(${_UT_TARGET} PRIVATE ${CUDA_INCLUDE_DIRS} ${onnxruntime_CUDNN_HOME}/include)
@@ -113,6 +121,14 @@ set(onnxruntime_test_framework_src_patterns
   "${TEST_SRC_DIR}/platform/*.cc"
   )
 
+file(GLOB onnxruntime_test_training_src
+  "${ORTTRAINING_SOURCE_DIR}/test/model/*.cc"
+  "${ORTTRAINING_SOURCE_DIR}/test/gradient/*.cc"
+  "${ORTTRAINING_SOURCE_DIR}/test/graph/*.cc"
+  "${ORTTRAINING_SOURCE_DIR}/test/optimizer/*.cc"
+  "${ORTTRAINING_SOURCE_DIR}/test/framework/*.cc"
+  )
+
 if(WIN32)
   list(APPEND onnxruntime_test_framework_src_patterns
     "${TEST_SRC_DIR}/platform/windows/*.cc"
@@ -150,6 +166,36 @@ file(GLOB_RECURSE onnxruntime_test_providers_cpu_src CONFIGURE_DEPENDS
   "${TEST_SRC_DIR}/providers/cpu/*"
   )
 list(APPEND onnxruntime_test_providers_src ${onnxruntime_test_providers_cpu_src})
+
+if (onnxruntime_USE_CUDA)
+  file(GLOB_RECURSE onnxruntime_test_providers_cuda_src CONFIGURE_DEPENDS
+    "${TEST_SRC_DIR}/providers/cuda/*"
+    )
+  list(APPEND onnxruntime_test_providers_src ${onnxruntime_test_providers_cuda_src})
+endif()
+
+if (onnxruntime_ENABLE_TRAINING)
+  file(GLOB_RECURSE orttraining_test_trainingops_cpu_src CONFIGURE_DEPENDS
+    "${ORTTRAINING_SOURCE_DIR}/test/training_ops/compare_provider_test_utils.cc"
+    "${ORTTRAINING_SOURCE_DIR}/test/training_ops/function_op_test_utils.cc"
+    "${ORTTRAINING_SOURCE_DIR}/test/training_ops/cpu/*"
+    )
+  list(APPEND onnxruntime_test_providers_src ${orttraining_test_trainingops_cpu_src})
+
+  if (onnxruntime_USE_CUDA)
+    file(GLOB_RECURSE orttraining_test_trainingops_cuda_src CONFIGURE_DEPENDS
+      "${ORTTRAINING_SOURCE_DIR}/test/training_ops/cuda/*"
+      )
+    list(APPEND onnxruntime_test_providers_src ${orttraining_test_trainingops_cuda_src})
+  endif()
+endif()
+
+if (onnxruntime_USE_DNNL)
+  file(GLOB_RECURSE onnxruntime_test_providers_dnnl_src CONFIGURE_DEPENDS
+    "${TEST_SRC_DIR}/providers/dnnl/*"
+    )
+  list(APPEND onnxruntime_test_providers_src ${onnxruntime_test_providers_dnnl_src})
+endif()
 
 if (onnxruntime_USE_NGRAPH)
   file(GLOB_RECURSE onnxruntime_test_providers_ngraph_src CONFIGURE_DEPENDS
@@ -273,11 +319,6 @@ file(GLOB_RECURSE onnxruntime_test_tvm_src CONFIGURE_DEPENDS
   "${ONNXRUNTIME_ROOT}/test/tvm/*.cc"
   )
 
-file(GLOB_RECURSE onnxruntime_test_openvino_src
-  "${ONNXRUNTIME_ROOT}/test/openvino/*.h"
-  "${ONNXRUNTIME_ROOT}/test/openvino/*.cc"
- )
-
 if(onnxruntime_USE_NUPHAR)
   list(APPEND onnxruntime_test_framework_src_patterns  ${TEST_SRC_DIR}/framework/nuphar/*)
   list(APPEND onnxruntime_test_framework_libs onnxruntime_providers_nuphar)
@@ -291,10 +332,6 @@ endif()
 
 if(onnxruntime_USE_SYSTOLIC)
   list(APPEND onnxruntime_test_providers_dependencies onnxruntime_providers_systolic)
-endif()
-
-if (onnxruntime_ENABLE_MICROSOFT_INTERNAL)
-  include(onnxruntime_unittests_internal.cmake)
 endif()
 
 if (onnxruntime_ENABLE_LANGUAGE_INTEROP_OPS)
@@ -326,6 +363,10 @@ set(ONNXRUNTIME_TEST_LIBS
     onnxruntime_common
     onnxruntime_mlas
 )
+
+if (onnxruntime_ENABLE_TRAINING)
+  set(ONNXRUNTIME_TEST_LIBS onnxruntime_training_runner onnxruntime_training ${ONNXRUNTIME_TEST_LIBS})
+endif()
 
 set(onnxruntime_test_providers_libs
     onnxruntime_test_utils
@@ -373,7 +414,7 @@ else()
   target_include_directories(onnxruntime_test_utils PRIVATE ${CMAKE_CURRENT_BINARY_DIR} ${ONNXRUNTIME_ROOT}
           "${CMAKE_CURRENT_SOURCE_DIR}/external/nsync/public")
 endif()
-onnxruntime_add_include_to_target(onnxruntime_test_utils onnxruntime_framework GTest::gtest onnx onnx_proto)
+onnxruntime_add_include_to_target(onnxruntime_test_utils onnxruntime_common onnxruntime_framework GTest::gtest onnx onnx_proto)
 
 if (onnxruntime_USE_DNNL)
   target_compile_definitions(onnxruntime_test_utils PUBLIC USE_DNNL=1)
@@ -392,6 +433,10 @@ if(NOT TARGET onnxruntime)
   list(APPEND all_tests ${onnxruntime_shared_lib_test_SRC})
 endif()
 set(all_dependencies ${onnxruntime_test_providers_dependencies} )
+
+  if (onnxruntime_ENABLE_TRAINING)
+    list(APPEND all_tests ${onnxruntime_test_training_src})
+  endif()
 
   if (onnxruntime_USE_TVM)
     list(APPEND all_tests ${onnxruntime_test_tvm_src})
@@ -465,14 +510,6 @@ if(WIN32)
       $<TARGET_FILE_DIR:${test_data_target}>
     )
   endif()
-  if (onnxruntime_USE_OPENVINO)
-    add_custom_command(
-      TARGET ${test_data_target} POST_BUILD
-      COMMAND ${CMAKE_COMMAND} -E copy
-      ${OPENVINO_CPU_EXTENSION_DIR}/${OPENVINO_CPU_EXTENSION_LIB}
-      $<TARGET_FILE_DIR:${test_data_target}>
-    )
-  endif()
   if (onnxruntime_USE_NGRAPH)
     add_custom_command(
       TARGET ${test_data_target} POST_BUILD
@@ -493,7 +530,7 @@ add_library(onnx_test_data_proto ${TEST_SRC_DIR}/proto/tml.proto)
 add_dependencies(onnx_test_data_proto onnx_proto ${onnxruntime_EXTERNAL_DEPENDENCIES})
 
 if(WIN32)
-  target_compile_options(onnx_test_data_proto PRIVATE "/wd4125" "/wd4456" "/wd4100" "/wd4267")
+  target_compile_options(onnx_test_data_proto PRIVATE "/wd4125" "/wd4456" "/wd4100" "/wd4267" "/wd6011" "/wd6387" "/wd28182")
 else()
   if(HAS_UNUSED_PARAMETER)
     target_compile_options(onnx_test_data_proto PRIVATE "-Wno-unused-parameter")
@@ -562,7 +599,7 @@ if (MSVC AND NOT CMAKE_SIZEOF_VOID_P EQUAL 8)
     target_compile_options(onnx_test_runner_common PRIVATE "/wd4244")
 endif()
 onnxruntime_add_include_to_target(onnx_test_runner_common onnxruntime_common onnxruntime_framework
-        onnxruntime_test_utils onnx onnx_proto re2::re2 safeint_interface)
+        onnxruntime_test_utils onnx onnx_proto re2::re2)
 
 add_dependencies(onnx_test_runner_common onnx_test_data_proto ${onnxruntime_EXTERNAL_DEPENDENCIES})
 target_include_directories(onnx_test_runner_common PRIVATE ${eigen_INCLUDE_DIRS} ${RE2_INCLUDE_DIR}
@@ -608,6 +645,8 @@ if(onnxruntime_BUILD_BENCHMARKS)
   if(WIN32)
     target_compile_options(onnxruntime_benchmark PRIVATE "$<$<COMPILE_LANGUAGE:CUDA>:-Xcompiler /wd4141>"
                       "$<$<NOT:$<COMPILE_LANGUAGE:CUDA>>:/wd4141>")
+    target_compile_options(onnxruntime_benchmark PRIVATE "$<$<COMPILE_LANGUAGE:CUDA>:SHELL:--compiler-options /utf-8>"
+            "$<$<NOT:$<COMPILE_LANGUAGE:CUDA>>:/utf-8>")
   endif()
   target_link_libraries(onnxruntime_benchmark PRIVATE onnx_test_runner_common benchmark ${onnx_test_libs})
   add_dependencies(onnxruntime_benchmark ${onnxruntime_EXTERNAL_DEPENDENCIES})
@@ -773,7 +812,7 @@ if(UNIX)
   if (APPLE)
     set(ONNXRUNTIME_CUSTOM_OP_LIB_LINK_FLAG "-Xlinker -dead_strip")
   else()
-    set(ONNXRUNTIME_CUSTOM_OP_LIB_LINK_FLAG "-Xlinker --no-undefined -Xlinker --gc-sections")
+    set(ONNXRUNTIME_CUSTOM_OP_LIB_LINK_FLAG "-Xlinker --version-script=${REPO_ROOT}/onnxruntime/test/testdata/custom_op_library/custom_op_library.lds -Xlinker --no-undefined -Xlinker --gc-sections -z noexecstack")
   endif()
 else()
   set(ONNXRUNTIME_CUSTOM_OP_LIB_LINK_FLAG "-DEF:${REPO_ROOT}/onnxruntime/test/testdata/custom_op_library/custom_op_library.def")
