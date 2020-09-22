@@ -200,6 +200,40 @@ Status QLinearConv<StorageOrder::NHWC>::Compute(OpKernelContext* context) const 
       start_time = profiler.StartTime();
     }
     if (col_buffer_data != nullptr) {
+      if(true){
+        printf(
+            "Avi Depthwise Convolution Override!"
+        );
+
+
+        // HwachaDepthWiseConv(0,//batchsize
+        //             conv_attrs_.group,
+        //            C,
+        //            input_shape[0], input_shape[1],
+        //            0, //filtercount
+        //            kernel[0], kernel[1],
+        //            pads[0], pads[1],
+        //            pads[2], pads[3],
+        //            dilations[0], dilations[1],
+        //            strides[0], strides[1],
+        //            output_image_size[0], output_image_size[1],
+        //            Xdata,
+        //            Wdata,
+        //            Bdata,
+        //            Ydata);
+
+        // SystolicMultiplyi8i8_i8(static_cast<const SystolicExecutionProvider*>(this->Info().GetExecutionProvider())->GetAcceleratorMode(),
+        //                       /*relu= */ fused_relu_,
+        //                       static_cast<int>(output_image_size), //I
+        //                       static_cast<int>(M / conv_attrs_.group), //J
+        //                       static_cast<int>(kernel_dim), //K
+        //                       (col_buffer_data == nullptr ? Xdata : col_buffer_data) + group_id * static_cast<int>(kernel_dim), conv_attrs_.group * static_cast<int>(kernel_dim),
+        //                       weight_base, static_cast<int>(M / conv_attrs_.group),
+        //                       Ydata + group_id * static_cast<int>(M / conv_attrs_.group), static_cast<int>(M),
+        //                       rounded_divisor, real_multiplier,
+        //                       Bdata != nullptr ?  Bdata + group_id * B_offset : nullptr, static_cast<int>(M / conv_attrs_.group),
+        //                       /*repeating_bias= */ true);
+      }
       math::Im2col<int8_t, StorageOrder::NHWC>()(
           Xdata,
           C,

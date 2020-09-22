@@ -2707,9 +2707,10 @@ main(
     for (int i = 0; i != 2; ++i) {
 
 #ifdef USE_SYSTOLIC
-        onnxruntime::make_unique<MlasHwachaDWCTest>()->ExecuteLong();
+        //printf("ONly DEPTHWISE");
+        //onnxruntime::make_unique<MlasHwachaDWCTest>()->ExecuteLong();
         printf("Systolic Matmul tests. %d, \n", argc);
-        //onnxruntime::make_unique<MlasSystolicMatmulTest>(argc - 1)->ExecuteShort();
+        onnxruntime::make_unique<MlasSystolicMatmulTest>(argc - 1)->ExecuteShort();
 
 
 #endif
