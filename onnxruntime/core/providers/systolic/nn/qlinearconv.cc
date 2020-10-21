@@ -193,48 +193,81 @@ Status QLinearConv<StorageOrder::NHWC>::Compute(OpKernelContext* context) const 
   const auto* Wdata = W->template Data<int8_t>();
   const auto* Bdata = B != nullptr ? B->template Data<int32_t>() : nullptr;
   auto* Ydata = Y->template MutableData<int8_t>();
-
+  int row = 0;
   for (int image_id = 0; image_id < N; ++image_id) {
     TimePoint start_time;
     if (profiling_enabled) {
       start_time = profiler.StartTime();
     }
-    if (col_buffer_data != nullptr) {
-      if(true){
-        printf(
-            "Avi Depthwise Convolution Override!"
-        );
+      //if (conv_attrs_.group > 1 && conv_attrs_.group == C ){
+      if (C == 1){
+          // printf("Group: %li \t Channels: %li \n", conv_attrs_.group, C);
+          // printf("Found DWC!\n");
+          HwachaDepthWiseConv(0,//batchsize
+              conv_attrs_.group,
+              C,
+              input_shape[0], input_shape[1],
+              0, //filtercount
+              kernel_shape[0], kernel_shape[1],
+              pads[0], pads[1],
+              pads[2], pads[3],
+              dilations[0], dilations[1],
+              strides[0], strides[1],
+              output_shape[0], output_shape[1],
+              Xdata,
+              Wdata,
+              Bdata,
+              Ydata,
+              rounded_divisor); 
 
+          printf("Hwacha Input:\nN: %li \t Group: %li \t Input Image Size: HxW %li x %li \t M / Group: %li \t Kernel Dim: %li \n", N, conv_attrs_.group, input_shape[0], input_shape[1], M / conv_attrs_.group, kernel_dim);
+        row = 0; 
+        // int ch = 0;
+        for (size_t l = 0; l < input_image_size; l+=1) {
+          // if (ch == C) { 
+          //   printf(" | ");
+          //   ch = 0;
+          // }
+          if (row == input_shape[1]*C) { 
+            printf(" End Row: %i Col: %i\n", row, l);
+            row = 0;
+          }
+          printf("%i \t", Xdata[l*C]);
+          row += 1; 
+          //ch += 1; 
+        }
+        
+        printf("Input Size: %li Confirm: %li\n", input_image_size, input_shape[0] * input_shape[1]);
+        
+        
+        printf("Output:\nN: %li \t Group: %li \t Output Image Size: %li  \t M / Group: %li \t Kernel Dim: %li \n", N, conv_attrs_.group, output_image_size, M / conv_attrs_.group, kernel_dim);
+        row = 0;
+        // ch = 0;
+        for (size_t l = 0; l < output_image_size; l+=1) {
+          // if (ch == C) { 
+          //   printf(" | ");
+          //   ch = 0;
+          // }
+          if (row == output_shape[1]*M) { 
+            printf(" End Row: %i Col: %i\n", row, l);
+            row = 0;
+          }
+          printf("%i \t", Ydata[l*M]);
+          row += 1; 
+          // ch += 1; 
+        }
+        
+        printf("Output Size: %li Confirm: %li\n", output_image_size, output_shape[0] * output_shape[1]);
 
-        // HwachaDepthWiseConv(0,//batchsize
-        //             conv_attrs_.group,
-        //            C,
-        //            input_shape[0], input_shape[1],
-        //            0, //filtercount
-        //            kernel[0], kernel[1],
-        //            pads[0], pads[1],
-        //            pads[2], pads[3],
-        //            dilations[0], dilations[1],
-        //            strides[0], strides[1],
-        //            output_image_size[0], output_image_size[1],
-        //            Xdata,
-        //            Wdata,
-        //            Bdata,
-        //            Ydata);
+        Xdata += X_offset;
+        Ydata += Y_offset;
 
-        // SystolicMultiplyi8i8_i8(static_cast<const SystolicExecutionProvider*>(this->Info().GetExecutionProvider())->GetAcceleratorMode(),
-        //                       /*relu= */ fused_relu_,
-        //                       static_cast<int>(output_image_size), //I
-        //                       static_cast<int>(M / conv_attrs_.group), //J
-        //                       static_cast<int>(kernel_dim), //K
-        //                       (col_buffer_data == nullptr ? Xdata : col_buffer_data) + group_id * static_cast<int>(kernel_dim), conv_attrs_.group * static_cast<int>(kernel_dim),
-        //                       weight_base, static_cast<int>(M / conv_attrs_.group),
-        //                       Ydata + group_id * static_cast<int>(M / conv_attrs_.group), static_cast<int>(M),
-        //                       rounded_divisor, real_multiplier,
-        //                       Bdata != nullptr ?  Bdata + group_id * B_offset : nullptr, static_cast<int>(M / conv_attrs_.group),
-        //                       /*repeating_bias= */ true);
+        continue;
+
       }
-      math::Im2col<int8_t, StorageOrder::NHWC>()(
+      else {
+      if (col_buffer_data != nullptr) {
+        math::Im2col<int8_t, StorageOrder::NHWC>()(
           Xdata,
           C,
           input_shape[0],
@@ -253,16 +286,16 @@ Status QLinearConv<StorageOrder::NHWC>::Compute(OpKernelContext* context) const 
           conv_attrs_.group,
           X_zero_point_value);
 
-      if (profiling_enabled) {
-        profiler.EndTimeAndRecordEvent(profiling::NODE_EVENT,
-                                      Node().Name() + "_kernel_nhwc_im2col_time",
-                                      start_time,
-                                      {{"op_name", KernelDef().OpName()},
-                                        {"sub_action", "im2col"},
-                                        {"provider", KernelDef().Provider()}});
-        start_time = profiler.StartTime();
+        if (profiling_enabled) {
+          profiler.EndTimeAndRecordEvent(profiling::NODE_EVENT,
+                                        Node().Name() + "_kernel_nhwc_im2col_time",
+                                        start_time,
+                                        {{"op_name", KernelDef().OpName()},
+                                          {"sub_action", "im2col"},
+                                          {"provider", KernelDef().Provider()}});
+          start_time = profiler.StartTime();
+        }
       }
-    }
 
     for (int group_id = 0; group_id < conv_attrs_.group; ++group_id) {
       /* The weights we multiply by are given by the `M / groups` x `kernel_h * kernel_w * C / groups` matrix
@@ -317,11 +350,57 @@ Status QLinearConv<StorageOrder::NHWC>::Compute(OpKernelContext* context) const 
       //               Ydata + group_id * static_cast<int>(M / conv_attrs_.group), static_cast<int>(M),
       //               rounded_divisor,
       //               broadcast_bias.get(), static_cast<int>(M / conv_attrs_.group));
+
+      // if(group_id == 0){
+    
+      }
     }
+
+    printf("After Systolic Input:\nN: %li \t Group: %li \t Input Image Size: %li  \t M / Group: %li \t Kernel Dim: %li \n", N, conv_attrs_.group, input_image_size, M / conv_attrs_.group, kernel_dim);
+    row = 0;
+    // int ch = 0;
+    for (size_t l = 0; l < input_image_size; l+=1) {
+      // if (ch == C) { 
+      //   printf(" | ");
+      //   ch = 0;
+      // }
+      if (row == input_shape[0]) { 
+        printf(" End Row: %i Col: %i\n", row, l);
+        row = 0;
+      }
+      printf("%i \t", Xdata[l*C]);
+      row += 1; 
+      // ch += 1; 
+    }
+    
+    printf("Input Size: %li Confirm: %li\n", input_image_size, input_shape[0] * input_shape[1]);
+    
+    
+    printf("Output:\nN: %li \t Group: %li \t Output Image Size: %li  \t M / Group: %li \t Kernel Dim: %li \n", N, conv_attrs_.group, output_image_size, M / conv_attrs_.group, kernel_dim);
+    row = 0;
+    // ch = 0;
+    for (size_t l = 0; l < output_image_size; l+=1) {
+      // if (ch == C) { 
+      //   printf(" | ");
+      //   ch = 0;
+      // }
+      if (row == output_shape[0]) { 
+        printf(" End Row: %i Col: %i\n", row, l);
+        row = 0;
+      }
+      printf("%i \t", Ydata[l*M]);
+      row += 1; 
+      // ch += 1; 
+    }
+    
+    printf("Output Size: %li Confirm: %li\n", output_image_size, output_shape[0] * output_shape[1]);
+    
 
     Xdata += X_offset;
     Ydata += Y_offset;
   }
+  
+  
 
   return Status::OK();
 }

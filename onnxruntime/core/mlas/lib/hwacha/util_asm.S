@@ -18,7 +18,36 @@ vtest2:
     vlb vv2, va0 #output
     vmul vv0, vv0, vv1
     vadd vv0, vv0, vv2
+    vdiv vv0, vv0, vs1 
     vsb vv0, va0
+    vstop
+
+    .globl vtest3
+vtest3:
+    vpset vp0
+    vlb vv0, va1 #input
+    vlb vv1, va2 #filter
+    vlb vv2, va0 #output
+    vsb vv0, va0
+    vstop
+
+    .globl vtest4
+vtest4:
+    vpset vp0
+    vlb vv0, va1 #input
+    vlb vv1, va2 #filter
+    vlh vv2, va0 #temp_output
+    vmul vv0, vv0, vv1
+    vadd vv0, vv0, vv2
+    vsh vv0, va0
+    vstop
+
+    .globl vtest5
+vtest5:
+    vpset vp0
+    vlh vv0, va0 #temp_output
+    vdiv vv0, vv0, vs1
+    vsb vv0, va1
     vstop
 
     .globl accumulate_channels
