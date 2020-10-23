@@ -2159,7 +2159,8 @@ class MlasHwachaDWCTest : public MlasTestBase
                    Input,
                    Filter,
                    Bias,
-                   Output);
+                   Output,
+                   1);
 
         ReferenceConv2D(BatchCount,
                         GroupCount,

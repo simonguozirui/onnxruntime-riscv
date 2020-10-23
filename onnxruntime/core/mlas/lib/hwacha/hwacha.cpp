@@ -28,7 +28,10 @@ void HwachaDepthWiseConv(const size_t batch_size,
   // printf("Group Count: %li\n", group_count);
   // printf("Channels: %li\n", channels);
   // printf("Filter Count: %li\n", filter_count);
-  printf("Input Shape: Height: %li Width: %li\n", in_height, in_width);
+  // printf("Input Shape: Height: %li Width: %li\n", in_height, in_width);
+  // printf("Output Shape: Height: %li Width: %li\n", out_height, out_width);
+
+  printf("Padding Left Height: %li Padding Left Widdth: %li Padding Right Height: %li Padding Right Width: %li\n", pad_left_height, pad_left_width, pad_right_height, pad_right_width);
 
   // printf("\n");
   // printf("input\n");
@@ -39,18 +42,18 @@ void HwachaDepthWiseConv(const size_t batch_size,
   //   printf("\n");
   // }
 
-  printf("\n");
-  printf("hwdc input\n");
-  for(size_t c = 0; c < channels; c++){
-    printf("Channel %i\n",c);
-    for (size_t y = 0; y < in_height; y+=1) {
-      for (size_t x = c; x < in_width * channels; x+=channels) {
-          printf("%i ", input[x + in_width * channels * y]);
-      }
-      printf("\n");
-    }
-    printf("\n");
-  }
+  // printf("\n");
+  // printf("hwdc input\n");
+  // for(size_t c = 0; c < channels; c++){
+  //   printf("Channel %i\n",c);
+  //   for (size_t y = 0; y < in_height; y+=1) {
+  //     for (size_t x = c; x < in_width * channels; x+=channels) {
+  //         printf("%i ", input[x + in_width * channels * y]);
+  //     }
+  //     printf("\n");
+  //   }
+  //   printf("\n");
+  // }
   int16_t temp_output[channels];
   for (size_t k = 0; k < channels; k++) {
       temp_output[k] = (int16_t) 0;
@@ -92,14 +95,32 @@ for(int output_idy=0; output_idy<out_height; output_idy+=1){
 
     
     //input_ptr = (int8_t*) input + output_idx + output_idy * in_width*channels; 
-    input_idy = output_idy;
+    input_idy = output_idy - pad_left_height;
     for(int filter_idy=0; filter_idy<kernel_height; filter_idy++){
-      input_idx = output_idx;
+      if(output_idy == 0 && filter_idy == 0 && pad_left_height == 1){
+        printf("pad top buffer zero. output_y: %i output_x: %i filter_y: %i \n", output_idy, output_idx, filter_idy);
+        input_idy += 1; 
+        continue;
+      }
+      
+      input_idx = output_idx - pad_left_width*channels;
       for(int filter_idx=0; filter_idx<kernel_width*channels; filter_idx+=channels){
         //printf("Filter_IDX: %i; Filter_IDY:  %i; Input_IDX: %i;  Input_IDY: %i; Output_IDX: %i;  Output_IDY: %i; \n", filter_idx, filter_idy, input_idx, input_idy, output_idx, output_idy);
         //printf("Input Values: %i %i; Filter Values: %i  %i; \n", input[input_idx + input_idy*in_width*channels], input[1 + input_idx + input_idy*in_width*channels], filter[filter_idx + filter_idy*kernel_width*channels], filter[1 + filter_idx + filter_idy*kernel_width*channels]);
         
-        
+        if(output_idx == 0 && filter_idx == 0 && pad_left_width == 1){
+          printf("pad left buffer zero. output_y: %i output_x: %i filter_y: %i filter_x: %i \n", output_idy, output_idx, filter_idy, filter_idx);
+          input_idx += channels; 
+          continue;
+        }
+        // else if(output_idx == out_width*channels-channels && filter_idx == kernel_width*channels-channels && pad_right_width == 1){
+        //   printf("pad right buffer zero. output_y: %i output_x: %i filter_y: %i filter_x: %i \n", output_idy, output_idx, filter_idy, filter_idx);
+        //   input_idx += channels; 
+        //   continue;
+        // }
+        printf("Input Values: %i ; Filter Values: %i  Input_IDX: %i  Input_IDY: %i \n", input[input_idx + input_idy*in_width*channels], filter[filter_idx + filter_idy*kernel_width*channels], input_idx, input_idy);
+
+
         asm volatile ("vmca va1, %0" : : "r" (input_ptr + input_idx + input_idy*in_width*channels)); 
         asm volatile ("vmca va2, %0" : : "r" (filter + filter_idx + filter_idy*kernel_width*channels)); 
         //asm volatile ("vmcs vs0, %0" : : "r" (channels)); 
@@ -157,31 +178,31 @@ asm volatile ("fence");
   //   printf("\n");
   // }
 
-  printf("\n");
-  printf("output from hdwk\n");
-  for(size_t c = 0; c < channels; c++){
-    printf("Channel %i\n",c);
-    for (size_t y = c; y < out_height * channels; y+=channels) {
-      for (size_t x = c; x < out_width * channels; x+=channels) {
-          printf("%i ", temp_output[x + out_width * y]);
-      }
-      printf("\n");
-    }
-    printf("\n");
-  }
+  // printf("\n");
+  // printf("output from hdwk\n");
+  // for(size_t c = 0; c < channels; c++){
+  //   printf("Channel %i\n",c);
+  //   for (size_t y = c; y < out_height * channels; y+=channels) {
+  //     for (size_t x = c; x < out_width * channels; x+=channels) {
+  //         printf("%i ", temp_output[x + out_width * y]);
+  //     }
+  //     printf("\n");
+  //   }
+  //   printf("\n");
+  // }
 
-  printf("\n");
-  printf("output from hdwk\n");
-  for(size_t c = 0; c < channels; c++){
-    printf("Channel %i\n",c);
-    for (size_t y = c; y < out_height * channels; y+=channels) {
-      for (size_t x = c; x < out_width * channels; x+=channels) {
-          printf("%i ", output[x + out_width * y]);
-      }
-      printf("\n");
-    }
-    printf("\n");
-  }
+  // printf("\n");
+  // printf("output from hdwk\n");
+  // for(size_t c = 0; c < channels; c++){
+  //   printf("Channel %i\n",c);
+  //   for (size_t y = c; y < out_height * channels; y+=channels) {
+  //     for (size_t x = c; x < out_width * channels; x+=channels) {
+  //         printf("%i ", output[x + out_width * y]);
+  //     }
+  //     printf("\n");
+  //   }
+  //   printf("\n");
+  // }
 
   printf("\nFinished Hwacha Depthwise Convolution! \n");
 

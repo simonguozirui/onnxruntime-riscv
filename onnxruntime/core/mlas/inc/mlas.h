@@ -435,7 +435,7 @@ MLASCALL(const size_t batch_size,
                 const size_t stride_height, const size_t stride_width,
                 const size_t out_height, const size_t out_width,
                 const  int8_t* input, const int8_t*  filter, const  int32_t* bias, 
-                int8_t* output);
+                int8_t* output, const unsigned int rounded_divisor);
 
 
 void Hwachaim2col
