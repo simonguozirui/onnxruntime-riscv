@@ -78,7 +78,8 @@ setvcfg(0, 0, 4, 1);
 int consumed = setvlen(channels);
 printf("Consumed length: %i\n", consumed);
 printf("Rounded Divisor: %i\n", rounded_divisor);
-
+for (int i = 0; i < kernel_width * kernel_height * channels; i++) printf("%i " , filter[i]);
+printf("\n");
 int input_idx = 0;
 int input_idy = 0;
 
@@ -98,7 +99,7 @@ for(int output_idy=0; output_idy<out_height; output_idy+=1){
     input_idy = output_idy - pad_left_height;
     for(int filter_idy=0; filter_idy<kernel_height; filter_idy++){
       if(output_idy == 0 && filter_idy == 0 && pad_left_height == 1){
-        printf("pad top buffer zero. output_y: %i output_x: %i filter_y: %i \n", output_idy, output_idx, filter_idy);
+        //printf("pad top buffer zero. output_y: %i output_x: %i filter_y: %i \n", output_idy, output_idx, filter_idy);
         input_idy += 1; 
         continue;
       }
@@ -106,10 +107,9 @@ for(int output_idy=0; output_idy<out_height; output_idy+=1){
       input_idx = output_idx - pad_left_width*channels;
       for(int filter_idx=0; filter_idx<kernel_width*channels; filter_idx+=channels){
         //printf("Filter_IDX: %i; Filter_IDY:  %i; Input_IDX: %i;  Input_IDY: %i; Output_IDX: %i;  Output_IDY: %i; \n", filter_idx, filter_idy, input_idx, input_idy, output_idx, output_idy);
-        //printf("Input Values: %i %i; Filter Values: %i  %i; \n", input[input_idx + input_idy*in_width*channels], input[1 + input_idx + input_idy*in_width*channels], filter[filter_idx + filter_idy*kernel_width*channels], filter[1 + filter_idx + filter_idy*kernel_width*channels]);
         
         if(output_idx == 0 && filter_idx == 0 && pad_left_width == 1){
-          printf("pad left buffer zero. output_y: %i output_x: %i filter_y: %i filter_x: %i \n", output_idy, output_idx, filter_idy, filter_idx);
+          //printf("pad left buffer zero. output_y: %i output_x: %i filter_y: %i filter_x: %i \n", output_idy, output_idx, filter_idy, filter_idx);
           input_idx += channels; 
           continue;
         }
@@ -118,11 +118,13 @@ for(int output_idy=0; output_idy<out_height; output_idy+=1){
         //   input_idx += channels; 
         //   continue;
         // }
-        printf("Input Values: %i ; Filter Values: %i  Input_IDX: %i  Input_IDY: %i \n", input[input_idx + input_idy*in_width*channels], filter[filter_idx + filter_idy*kernel_width*channels], input_idx, input_idy);
+        //printf("Input Values: %i ; Filter Values: %i  Input_IDX: %i  Input_IDY: %i \n", input[input_idx + input_idy*in_width*channels], filter[filter_idx + filter_idy*kernel_width*channels], input_idx, input_idy);
+        //printf("Input Values: %i %i; Filter Values: %i  %i; \n", input[input_idx*channels + input_idy*in_width*channels], input[1 + input_idx*channels + input_idy*in_width*channels], filter[filter_idx*channels + filter_idy*kernel_width*channels], filter[1 + filter_idx*channels + filter_idy*kernel_width*channels]);
 
-
+        
         asm volatile ("vmca va1, %0" : : "r" (input_ptr + input_idx + input_idy*in_width*channels)); 
         asm volatile ("vmca va2, %0" : : "r" (filter + filter_idx + filter_idy*kernel_width*channels)); 
+        asm volatile ("vmca va3, %0" : : "r" (kernel_width*kernel_height)); //divisor 
         //asm volatile ("vmcs vs0, %0" : : "r" (channels)); 
         asm volatile ("la t0, vtest4" : : : "t0");
         asm volatile ("lw t1, 0(t0)");

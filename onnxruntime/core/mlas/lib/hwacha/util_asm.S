@@ -35,7 +35,7 @@ vtest3:
 vtest4:
     vpset vp0
     vlb vv0, va1 #input
-    vlb vv1, va2 #filter
+    vlstb vv1, va2, va3 #filter
     vlh vv2, va0 #temp_output
     vmul vv0, vv0, vv1
     vadd vv0, vv0, vv2

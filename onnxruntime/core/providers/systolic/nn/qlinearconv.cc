@@ -167,6 +167,10 @@ Status QLinearConv<StorageOrder::NHWC>::Compute(OpKernelContext* context) const 
   const int64_t kernel_dim = C / conv_attrs_.group * kernel_size;
   const int64_t col_buffer_size = C * output_image_size * kernel_size;
   
+  //DEBUG Values
+  size_t Nu, He, Wi, Ch; 
+
+
   const size_t kernel_rank = kernel_shape.size();
   ORT_ENFORCE(kernel_rank == 2, "NHWC cannot handle kernel rank other than 2 atm");
 
@@ -199,100 +203,123 @@ Status QLinearConv<StorageOrder::NHWC>::Compute(OpKernelContext* context) const 
     if (profiling_enabled) {
       start_time = profiler.StartTime();
     }
-      //if (conv_attrs_.group > 1 && conv_attrs_.group == C ){
-      // if (C == 1){
-      //     // printf("Group: %li \t Channels: %li \n", conv_attrs_.group, C);
-      //     // printf("Found DWC!\n");
-      //     HwachaDepthWiseConv(0,//batchsize
-      //         conv_attrs_.group,
-      //         C,
-      //         input_shape[0], input_shape[1],
-      //         0, //filtercount
-      //         kernel_shape[0], kernel_shape[1],
-      //         1,1,
-      //         1,1,
-      //         // pads[0], pads[1],
-      //         // pads[2], pads[3],
-      //         dilations[0], dilations[1],
-      //         strides[0], strides[1],
-      //         output_shape[0]+2, output_shape[1]+2,
-      //         Xdata,
-      //         Wdata,
-      //         Bdata,
-      //         Ydata,
-      //         rounded_divisor); 
+      if (conv_attrs_.group > 1 && conv_attrs_.group == C ){
+      //if (C == 1){
+          HwachaDepthWiseConv(0,//batchsize
+              conv_attrs_.group,
+              C,
+              input_shape[0], input_shape[1],
+              0, //filtercount
+              kernel_shape[0], kernel_shape[1],
+              //1,1,
+              //1,1,
+              pads[0], pads[1],
+              pads[2], pads[3],
+              dilations[0], dilations[1],
+              strides[0], strides[1],
+              output_shape[0], output_shape[1],
+              Xdata,
+              Wdata,
+              Bdata,
+              Ydata,
+              rounded_divisor); 
 
-      //     printf("Hwacha Input:\nN: %li \t Group: %li \t Input Image Size: HxW %li x %li \t M / Group: %li \t Kernel Dim: %li \n", N, conv_attrs_.group, input_shape[0], input_shape[1], M / conv_attrs_.group, kernel_dim);
-      //   row = 0; 
-      //   // int ch = 0;
-      //   // for (size_t l = 0; l < input_image_size*C; l+=1) {
-      //   //   // if (ch == C) { 
-      //   //   //   printf(" | ");
-      //   //   //   ch = 0;
-      //   //   // }
-      //   //   if (row == input_shape[1]*C) { 
-      //   //     printf(" End Row: %i Col: %i\n", row, l);
-      //   //     row = 0;
-      //   //   }
-      //   //   printf("%i \t", Xdata[l*C]);
-      //   //   row += 1; 
-      //   //   //ch += 1; 
-      //   // }
+              Nu = 1; 
+              He = input_shape[0];
+              Wi = input_shape[1];
+              Ch = C;
+              
+              printf("Hwacha Input:\nN: %li \t Group: %li \t Input Image Size: HxW %li x %li \t M / Group: %li \t Kernel Dim: %li \n", N, conv_attrs_.group, input_shape[0], input_shape[1], M / conv_attrs_.group, kernel_dim);
+              printf("Input Size: %li Confirm: %li Channels: %i \n", input_image_size, input_shape[0] * input_shape[1], Ch);
+    
+              for (int n = 0; n < Nu; n++) {
+                for (int h = 0; h < He; h++) {
+                  for (int w = 0; w < Wi; w++) {
+                    for (int c = 0; c < Ch; c++) {
+                      if(c == 0){
+                        printf("%i ", Xdata[((n*He + h)*Wi + w)*Ch + c]); 
+                      }
+                    }
+                  }
+                  printf("\n");
+                }
+                printf("\n");
+              }
+            
+
+              Nu = 1; 
+              He = kernel_shape[0];
+              Wi = kernel_shape[1];
+              Ch = W->Shape()[3];
+              
+              printf("Weights Kernel Dim: %i Channels: %i \n", kernel_dim, Ch);
+              for (int n = 0; n < Nu; n++) {
+                for (int h = 0; h < He; h++) {
+                  for (int w = 0; w < Wi; w++) {
+                    for (int c = 0; c < C; c++) {
+                      if(c == 0){
+                        printf("%i ", Wdata[((n*He + h)*Wi + w)*Ch + c]); 
+                      }
+                    }
+                  }
+                  printf("\n");
+                }
+                printf("\n");
+              }
+              printf("\n");
+              for (int i = 0; i < He*Wi*C; i++) printf("%i " , Wdata[i]);
+              printf("\n");
+
+
+              Nu = 1; 
+              He = kernel_shape[0];
+              Wi = kernel_shape[1];
+              Ch = W->Shape()[3];
+
+              printf("\n");
+              for (int n = 0; n < Nu; n++) {
+                for (int h = 0; h < He; h++) {
+                  for (int w = 0; w < Wi; w++) {
+                    for (int c = 0; c < C; c++) {
+                    
+                      printf("%i ", Wdata[((n*He + h)*Wi + w)*Ch + c]); 
+                      
+                    }
+                  }
+                }
   
-      //   // for(size_t c = 0; c < C; c++){
-      //   //     if (c != 0) {continue;}
-      //   //     printf("Channel %i\n",c);
-      //   //     for (size_t y = 0; y < input_shape[0]; y+=1) {
-      //   //     for (size_t x = c; x < input_shape[1] * C; x+=C) {
-      //   //         printf("%i ", Input[x + input_shape[1] * C * y]);
-      //   //     }
-      //   //     printf("\n");
-      //   //     }
-      //   //     printf("\n");
-      //   // }
-      //   for (size_t h=0; h < input_shape[0]; h+=1){
-      //     for (size_t w=0; w < input_shape[1]; w+=1){
-      //       for (size_t c=0; c < C; c+=1){
-      //         if(c==0){
-      //           printf("%i \t", Xdata[h*input_shape[0] + w*C]);
-      //         }
-      //       }
-      //     }
-      //     printf("\\ \n");
-      //   }
-        
-      //   printf("Input Size: %li Confirm: %li\n", input_image_size, input_shape[0] * input_shape[1]);
-        
+              }
+              printf("\n");
 
-      //   printf("Weights Kernel Dim: %i \n", kernel_dim);
-      //   for (size_t h=0; h < kernel_shape[0]; h+=1){
-      //     for (size_t w=0; w < kernel_shape[1]; w+=1){
-      //       printf("%i\t", Wdata[w*C + h*kernel_shape[1]*C]);
-      //     }
-      //     printf("\\ \n");
-      //   }
-        
-      //   printf("Output:\nN: %li \t Group: %li \t Output Image Size: %li  \t M / Group: %li \t Kernel Dim: %li \n", N, conv_attrs_.group, output_image_size, M / conv_attrs_.group, kernel_dim);
-      //   for (size_t h=0; h < output_shape[0]; h+=1){
-      //     for (size_t w=0; w < output_shape[1]; w+=1){
-      //       for (size_t c=0; c < M; c+=1){
-      //         if(c==0){
-      //           printf("%i \t", Ydata[h*output_shape[0] + w*M]);
-      //         }
-      //       }
-      //     }
-      //     printf("\\ \n");
-      //   }
-        
-      //   printf("Output Size: %li Confirm: %li\n", output_image_size, output_shape[0] * output_shape[1]);
+              printf("Output:\nN: %li \t Group: %li \t Output Image Size: %li  \t M / Group: %li \t Kernel Dim: %li \n", N, conv_attrs_.group, output_image_size, M / conv_attrs_.group, kernel_dim);
+              printf("Output Size: %li Confirm: %li Output Channels: %i \n", output_image_size, output_shape[0] * output_shape[1], Y->Shape()[3]);
 
-      //   Xdata += X_offset;
-      //   Ydata += Y_offset;
+              Nu = 1; 
+              He = output_shape[0];
+              Wi = output_shape[1];
+              Ch = Y->Shape()[3];
 
-      //   continue;
+              for (int n = 0; n < Nu; n++) {
+                for (int h = 0; h < He; h++) {
+                  for (int w = 0; w < Wi; w++) {
+                    for (int c = 0; c < Ch; c++) {
+                      if(c == 0){
+                        printf("%i ", Ydata[((n*He + h)*Wi + w)*Ch + c]); 
+                      }
+                    }
+                  }
+                  printf("\n");
+                }
+                printf("\n");
+              }
 
-      // }
-      // else {
+        Xdata += X_offset;
+        Ydata += Y_offset;
+
+        continue;
+
+      }
+      else {
       if (col_buffer_data != nullptr) {
         math::Im2col<int8_t, StorageOrder::NHWC>()(
           Xdata,
@@ -323,29 +350,20 @@ Status QLinearConv<StorageOrder::NHWC>::Compute(OpKernelContext* context) const 
           start_time = profiler.StartTime();
         }
       }
-    printf("PRETRANSPOSE: Weights Kernel Dim: %i \n", kernel_dim);
-      // for (size_t f = 0; f < M;f++){
-      //       printf("filter %i\n", f);
-      //       for (size_t k = 0; k < kernel_shape[0]; k+=1) {
-      //           for (size_t l = f; l < kernel_shape[1]*M; l+=M) {
-      //               printf("%i ", Wdata[k * M * kernel_shape[1] + l]);
-      //           }
-      //           printf("\n");
-      //       }
-      //       printf("\n");
-      //     }
-
-
-      for (size_t f = 0; f < kernel_shape[0]*kernel_shape[1]*M; f+= kernel_dim){
-            printf("filter %i\n", f / kernel_dim);
-            for (size_t k = 0; k < kernel_shape[0]; k+=1) {
-                for (size_t l = 0; l < kernel_shape[1]; l+=1) {
-                    printf("%i ", Wdata[k * kernel_shape[1] + l + f]);
-                }
-                printf("\n");
-            }
-            printf("\n");
-          }
+    // printf("PRETRANSPOSE: Weights Kernel Dim: %i \n", kernel_dim);
+    //   for (size_t f = 0; f < kernel_shape[0]*kernel_shape[1]*M; f+= kernel_dim){
+    //         if(f  < kernel_dim*3){
+    //             printf("filter %i\n", f / kernel_dim);
+    //             for (size_t k = 0; k < kernel_shape[0]; k+=1) {
+    //                 for (size_t l = 0; l < kernel_shape[1]; l+=1) {
+    //                     printf("%i ", Wdata[k * kernel_shape[1] + l + f]);
+    //                 }
+    //                 printf("\n");
+    //             }
+    //             printf("\n");
+    //         }
+            
+    //       }
     for (int group_id = 0; group_id < conv_attrs_.group; ++group_id) {
       /* The weights we multiply by are given by the `M / groups` x `kernel_h * kernel_w * C / groups` matrix
        * starting at weights + group_id * (M / groups) * kernel_h * kernel_w * C / groups.
@@ -404,71 +422,74 @@ Status QLinearConv<StorageOrder::NHWC>::Compute(OpKernelContext* context) const 
 
       // if(group_id == 0){
     
-      //}
+      }
     }
+
+
+    Nu = 1; 
+    He = input_shape[0];
+    Wi = input_shape[1];
+    Ch = X->Shape()[3];
 
     printf("After Systolic Input:\nN: %li \t Group: %li \t Input Image Size: %li  \t M / Group: %li \t Kernel Dim: %li \n", N, conv_attrs_.group, input_image_size, M / conv_attrs_.group, kernel_dim);
-    row = 0;
-    // int ch = 0;
-    for (size_t l = 0; l < input_image_size; l+=1) {
-      // if (ch == C) { 
-      //   printf(" | ");
-      //   ch = 0;
-      // }
-      if (row == input_shape[0]) { 
-        printf(" End Row: %i Col: %i\n", row, l);
-        row = 0;
-      }
-      printf("%i \t", Xdata[l*C]);
-      row += 1; 
-      // ch += 1; 
-    }
+    printf("Input Size: %li Confirm: %li Channels: %i \n", input_image_size, input_shape[0] * input_shape[1], Ch);
     
-    printf("Input Size: %li Confirm: %li\n", input_image_size, input_shape[0] * input_shape[1]);
-    
-     printf("Weights Kernel Dim: %i \n", kernel_dim);
-    //     for (size_t h=0; h < kernel_shape[0]; h+=1){
-    //       for (size_t w=0; w < kernel_shape[1]; w+=1){
-    //         for (size_t c=0; c < C/conv_attrs_.group; c+=1){
-              
-    //           printf("%i \t", Wdata[h*kernel_shape[0] + w*C]);
-            
-    //         }
-    //       }
-    //       printf("\\ \n");
-    //     }
-
-  
-    
-          for (size_t f = 0; f < M;f++){
-            printf("filter %i\n", f);
-            for (size_t k = 0; k < kernel_shape[0]; k+=1) {
-                for (size_t l = f; l < kernel_shape[1]*M; l+=M) {
-                    printf("%i ", Wdata[k * M * kernel_shape[1] + l]);
-                }
-                printf("\n");
+    for (int n = 0; n < Nu; n++) {
+      for (int h = 0; h < He; h++) {
+        for (int w = 0; w < Wi; w++) {
+          for (int c = 0; c < Ch; c++) {
+            if(c == 0){
+              printf("%i ", Xdata[((n*He + h)*Wi + w)*Ch + c]); 
             }
-            printf("\n");
           }
+        }
+        printf("\n");
+      }
+      printf("\n");
+    }
+  
+
+    Nu = 1; 
+    He = kernel_shape[0];
+    Wi = kernel_shape[1];
+    Ch = W->Shape()[3];
+
+    printf("Weights Kernel Dim: %i Channels: %i \n", kernel_dim, C);
+    for (int n = 0; n < Nu; n++) {
+      for (int h = 0; h < He; h++) {
+        for (int w = 0; w < Wi; w++) {
+          for (int c = 0; c < Ch; c++) {
+            if(c == 0){
+              printf("%i ", Wdata[((n*He + h)*Wi + w)*Ch + c]); 
+            }
+          }
+        }
+        printf("\n");
+      }
+      printf("\n");
+    }
 
     printf("Output:\nN: %li \t Group: %li \t Output Image Size: %li  \t M / Group: %li \t Kernel Dim: %li \n", N, conv_attrs_.group, output_image_size, M / conv_attrs_.group, kernel_dim);
-    row = 0;
-    // ch = 0;
-    for (size_t l = 0; l < output_image_size; l+=1) {
-      // if (ch == C) { 
-      //   printf(" | ");
-      //   ch = 0;
-      // }
-      if (row == output_shape[0]) { 
-        printf(" End Row: %i Col: %i\n", row, l);
-        row = 0;
+    printf("Output Size: %li Confirm: %li Output Channels: %i \n", output_image_size, output_shape[0] * output_shape[1], Y->Shape()[3]);
+
+    Nu = 1; 
+    He = output_shape[0];
+    Wi = output_shape[1];
+    Ch = Y->Shape()[3];
+
+    for (int n = 0; n < Nu; n++) {
+      for (int h = 0; h < He; h++) {
+        for (int w = 0; w < Wi; w++) {
+          for (int c = 0; c < Ch; c++) {
+            if(c == 0){
+              printf("%i ", Ydata[((n*He + h)*Wi + w)*Ch + c]); 
+            }
+          }
+        }
+        printf("\n");
       }
-      printf("%i \t", Ydata[l*M]);
-      row += 1; 
-      // ch += 1; 
+      printf("\n");
     }
-    
-    printf("Output Size: %li Confirm: %li\n", output_image_size, output_shape[0] * output_shape[1]);
     
 
     Xdata += X_offset;
