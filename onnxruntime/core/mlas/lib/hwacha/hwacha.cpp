@@ -105,7 +105,7 @@ for(int output_idy=0; output_idy<out_height; output_idy+=1){
       }
       
       input_idx = output_idx - pad_left_width*channels;
-      for(int filter_idx=0; filter_idx<kernel_width*channels; filter_idx+=channels){
+      for(int filter_idx=0; filter_idx<kernel_width; filter_idx+=1){
         //printf("Filter_IDX: %i; Filter_IDY:  %i; Input_IDX: %i;  Input_IDY: %i; Output_IDX: %i;  Output_IDY: %i; \n", filter_idx, filter_idy, input_idx, input_idy, output_idx, output_idy);
         
         if(output_idx == 0 && filter_idx == 0 && pad_left_width == 1){
@@ -118,12 +118,12 @@ for(int output_idy=0; output_idy<out_height; output_idy+=1){
         //   input_idx += channels; 
         //   continue;
         // }
-        //printf("Input Values: %i ; Filter Values: %i  Input_IDX: %i  Input_IDY: %i \n", input[input_idx + input_idy*in_width*channels], filter[filter_idx + filter_idy*kernel_width*channels], input_idx, input_idy);
-        //printf("Input Values: %i %i; Filter Values: %i  %i; \n", input[input_idx*channels + input_idy*in_width*channels], input[1 + input_idx*channels + input_idy*in_width*channels], filter[filter_idx*channels + filter_idy*kernel_width*channels], filter[1 + filter_idx*channels + filter_idy*kernel_width*channels]);
+        //printf("Input_IDX: %i  Input_IDY: %i Filter_IDX: %i  Filter_IDY: %i\n", input_idx, input_idy, filter_idx, filter_idy);
+        //printf("Input Values: %i %i; Filter Values: %i  %i; \n", input[input_idx + input_idy*in_width*channels], input[1 + input_idx + input_idy*in_width*channels], filter[filter_idx + filter_idy*kernel_width], filter[kernel_width*kernel_height + filter_idx + filter_idy*kernel_width]);
 
         
         asm volatile ("vmca va1, %0" : : "r" (input_ptr + input_idx + input_idy*in_width*channels)); 
-        asm volatile ("vmca va2, %0" : : "r" (filter + filter_idx + filter_idy*kernel_width*channels)); 
+        asm volatile ("vmca va2, %0" : : "r" (filter + filter_idx + filter_idy*kernel_width)); 
         asm volatile ("vmca va3, %0" : : "r" (kernel_width*kernel_height)); //divisor 
         //asm volatile ("vmcs vs0, %0" : : "r" (channels)); 
         asm volatile ("la t0, vtest4" : : : "t0");

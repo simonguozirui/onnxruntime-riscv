@@ -152,6 +152,7 @@ void NhwcTransformerImpl::TransformQLinearConv(Node& node, const logging::Logger
   if (filters_it != filters_transposed.end()) {
     // Reuse the existing NodeArg.
     nhwc_conv_W_arg = filters_it->second;
+    printf("NHWC Transformer: RESUING\n" );
   } else {
     Initializer conv_W{*conv_W_tensor_proto, graph_.ModelPath()};
     std::vector<int8_t> reordered_filter(conv_W.size());
@@ -171,6 +172,30 @@ void NhwcTransformerImpl::TransformQLinearConv(Node& node, const logging::Logger
       }
     }
 
+    //printf("NHWC Transformer: Input Channels %i Output Channels %i\n", input_channels, output_channels );
+    // for (int i = 0; i < reordered_filter.size(); i++) printf("%i " ,reordered_filter[i]);
+    // printf("\n");
+    // for (int i = 0; i < reordered_filter.size(); i++) printf("%i ", conv_W.data<int8_t>()[i]);
+    // printf("\n");
+    
+    
+    // printf("\n");
+    // printf("NHWC Transformer: Input Channels %i Output Channels %i\n", input_channels, output_channels );
+    // for (size_t f = 0; f < kernel_dim * output_channels; f+= kernel_dim){
+    //       if(f  < kernel_dim*3){
+    //           printf("filter %i\n", f / kernel_dim);
+    //           for (size_t k = 0; k < H; k+=1) {
+    //               for (size_t l = 0; l < W; l+=1) {
+    //                   printf("%i ", conv_W.data<int8_t>()[k * W + l + f]);
+    //               }
+    //               printf("\n");
+    //           }
+    //           printf("\n");
+    //       }
+          
+    //     }
+
+
     // Then transpose within each group
     std::vector<int8_t> group_transposed(conv_W.size());
     // for (int group_id = 0; group_id < group_count; group_id++) {
@@ -185,7 +210,7 @@ void NhwcTransformerImpl::TransformQLinearConv(Node& node, const logging::Logger
     ONNX_NAMESPACE::TensorProto nhwc_conv_W_tensor_proto;
     nhwc_conv_W_tensor_proto.set_data_type(ONNX_NAMESPACE::TensorProto_DataType_INT8);
     nhwc_conv_W_tensor_proto.set_name(graph_.GenerateNodeArgName(input_defs[3]->Name() + "_nhwc"));
-    nhwc_conv_W_tensor_proto.set_raw_data(reordered_filter.data(), group_transposed.size() * sizeof(int8_t));
+    nhwc_conv_W_tensor_proto.set_raw_data(reordered_filter.data(), reordered_filter.size() * sizeof(int8_t));
 
     nhwc_conv_W_tensor_proto.add_dims(conv_W.dims()[0]);
     nhwc_conv_W_tensor_proto.add_dims(conv_W.dims()[2]);
@@ -235,6 +260,7 @@ void NhwcTransformerImpl::TransformQLinearRelu(Node& node,  const logging::Logge
   auto it = nhwc_args_.find(input_defs[0]);
   // If the input is indeed in NHWC format
   if (it != nhwc_args_.end()) {
+    printf("transform qlinear RELU\n");
     LOGS(logger, VERBOSE) << "Transforming QLinearRelu to NHWC";
     auto& nhwc_input = it->second;
     input_defs[0] = nhwc_input->nhwc_arg_;

@@ -204,15 +204,15 @@ Status QLinearConv<StorageOrder::NHWC>::Compute(OpKernelContext* context) const 
       start_time = profiler.StartTime();
     }
       if (conv_attrs_.group > 1 && conv_attrs_.group == C ){
-      //if (C == 1){
+      //if (C == 2){
           HwachaDepthWiseConv(0,//batchsize
               conv_attrs_.group,
               C,
               input_shape[0], input_shape[1],
               0, //filtercount
               kernel_shape[0], kernel_shape[1],
-              //1,1,
-              //1,1,
+              // 1,1,
+              // 1,1,
               pads[0], pads[1],
               pads[2], pads[3],
               dilations[0], dilations[1],
