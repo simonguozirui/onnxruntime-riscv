@@ -25,6 +25,7 @@ cxxopts::ParseResult parse(int argc, char* argv[]) {
         ("O,optimization", "Optimization level. NHWC transformation is applied at level 1.",
                             cxxopts::value<int>()->default_value("1"), "[0 (none) / 1 (basic) / 2 (extended) / 99 (all)]")
         ("d,debug", "Debug level", cxxopts::value<int>()->default_value("3"), "[0-5, with 0 being most verbose]")
+        ("v,hwacha", "Enable Hwacha Acceleration. Either 0 or 1.", cxxopts::value<int>()->default_value("0"), "[0/1]")
         ("s,save_model", "Save transformed model to path", cxxopts::value<std::string>(), "[path]");
 
     options.add_options("Info")
